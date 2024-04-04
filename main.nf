@@ -85,15 +85,15 @@ process CONVERT_NTC {
     tuple path(input_seq), val(sample_id)
 
     output:
-    path("${sample_id}.fasta"), emit: fasta
+    path("${sample_id}_dedupe.fasta"), emit: fasta
 
     when:
     sample_id.contains("NTC")
 
     script:
     """
-    bbduk.sh in=${input_seq} out=duk_${input_seq} minlen=100 hdist=2 ftm=5 maq=10
-    seqkit fq2fa duk_${input_seq} -o ${sample_id}.fasta
+    bbduk.sh in=${input_seq} out=duk${input_seq} minlen=100 hdist=2 ftm=5 maq=10
+    seqkit fq2fa duk${input_seq} -o ${sample_id}.fasta
     dedupe.sh -Xmx8g in=${sample_id}.fasta out=${sample_id}_dedupe.fasta
     """
 }
@@ -112,16 +112,17 @@ process REMOVE_NTC_CONTAMINANTS {
 
     // unmapped reads are whatever doesn't map to the negative control AKA contamination
     output:
-    tuple path("${sample_id}.fastq.gz"), val(sample_id)
+    tuple path("${sample_id}_cf.fastq.gz"), val(sample_id)
 
     script:
     """
-    bbmap.sh -Xmx8g perfectmode=f in=${input_seq} out=${sample_id}.sam ref=${ntc}
+    bbmap.sh -Xmx8g perfectmode=t in=${input_seq} out=${sample_id}.sam ref=${ntc}
     reformat.sh unmappedonly=t in=${sample_id}.sam \
     ref=${ntc} \
-    out=${sample_id}.fastq.gz
+    out=${sample_id}_cf.fastq.gz
     """
 }
+// cf = contaminant free
 
 // Picks up from the MERGE_FASTQs process and begins to process the files
 process READ_PREPROCESS {
